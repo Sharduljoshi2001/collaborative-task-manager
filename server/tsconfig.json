@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    /* Base Options */
+    "target": "ES2020",                       // Node 14+ support
+    "module": "commonjs",                     // Code likhenge ESM mein, par compile hoga CJS mein (Best for Node)
+    "rootDir": "./src",                       // Hamara source code yahan hoga
+    "outDir": "./dist",                       // Compile hone ke baad code yahan jayega
+    "esModuleInterop": true,                  // ESM aur CJS modules ko mix karne ke liye zaroori
+    "strict": true,                           // Strict Type checking (Best practice)
+    "skipLibCheck": true,                     // External libraries ke type errors ignore karega
+    "forceConsistentCasingInFileNames": true, // Windows/Mac filename issues prevent karega
+    
+    /* Path Aliases (Optional but good) */
+    "baseUrl": ".",
+    
+    /* Source Maps for Debugging */
+    "sourceMap": true                         // Ye line bohot zaroori hai VS Code debugger ke liye
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

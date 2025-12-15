@@ -1,0 +1,9 @@
+# Dependencies
+node_modules
+dist
+
+# Environment variables (CRITICAL)
+.env
+
+# OS generated files
+.DS_Store
