@@ -2,6 +2,7 @@ import express, { Request, Response } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import authRoute from "./routes/authRoute";
+import taskRoute from "./routes/taskRoute"
 import { prisma } from "./config/db";
 dotenv.config();
 const app = express();
@@ -12,6 +13,7 @@ app.use(cors());
 
 //routes mounting section
 app.use("/api/auth",authRoute);
+app.use("/api/tasks",taskRoute);
 //health check for DB connection
 app.get("/health", async (req: Request, res: Response) => {
   try {
