@@ -40,3 +40,25 @@ export const getAllTasks = async ()=>{
         orderBy:{createdAt:'desc'}
     })
 }
+
+//finding task by id
+export const findTaskById = async (id:string)=>{
+  return await prisma.task.findUnique({
+    where:{id}
+  });
+}
+
+//updating the task 
+export const updateTask = async(id:string, data:UpdateTaskInput)=>{
+  return await prisma.task.update({
+    where:{id},
+    data:data,
+  })
+}
+
+//deleting the task
+export const deleteTask = async(id:string)=>{
+  return await prisma.task.delete({
+    where:{id}
+  });
+}
