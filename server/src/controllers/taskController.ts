@@ -10,6 +10,7 @@ export const createTask = async (req: Request, res: Response) => {
   try {
     //validating task
     const validatedData = createTaskSchema.parse(req.body);
+
     // extracting user id from token
     const user = req.user as JwtPayload;
     // if middleware fails or user id was no present in the token
@@ -22,6 +23,9 @@ export const createTask = async (req: Request, res: Response) => {
     }
     //calling service layer to create the given task
     const task = await taskService.createNewTask(validatedData, user.userId);
+    //socket emit logic(for task creation)
+    const io = req.app.get("io");
+    io.emit("task created", task);
     res.status(200).json({
       status: "success",
       message: "task successfully created",
@@ -59,7 +63,10 @@ export const getTasks = async (req: Request, res: Response) => {
   }
 };
 //updating tasks controller
-export const updateTask = async (req: Request, res: Response): Promise<void> => {
+export const updateTask = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
     //extracting id from url params
     const taskId = req.params.id;
@@ -71,6 +78,9 @@ export const updateTask = async (req: Request, res: Response): Promise<void> => 
       user.userId,
       validatedData
     );
+    //socket emit logic(for task updation)
+    const io = req.app.get("io");
+    io.emit("task updated", updatedTask);
     res.status(200).json({
       status: "success",
       message: "task updated successfully",
@@ -94,13 +104,18 @@ export const updateTask = async (req: Request, res: Response): Promise<void> => 
   }
 };
 //deleting task controller
-export const deleteTask = async (req: Request, res: Response): Promise<void> => {
+export const deleteTask = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
     const taskId = req.params.id;
     const user = req.user as JwtPayload;
 
     await taskService.deleteTask(taskId, user.userId);
-
+    //sock emit logic(for task deletion)
+    const io = req.app.get("io");
+    io.emit("task deleted", taskId);
     res.status(204).json({
       status: "success",
       message: "Task deleted successfully",
@@ -108,8 +123,8 @@ export const deleteTask = async (req: Request, res: Response): Promise<void> => 
     });
   } catch (error: any) {
     if (error.message.includes("unauthorized")) {
-        res.status(403).json({ status: "fail", message: error.message });
-        return;
+      res.status(403).json({ status: "fail", message: error.message });
+      return;
     }
     res.status(500).json({ status: "error", message: error.message });
   }
