@@ -22,7 +22,7 @@ export const loginUser = async (data: LoginInput) => {
   //checking if the user exsts or not
   const existingUser = await userRepository.findUserByEmail(data.email);
   if (!existingUser) {
-    throw new Error("Invalid credentials");
+    throw new Error("User not found, please register first.");
   }
   //checking if the password is correct
   const isPasswordCorrect = await bcrypt.compare(

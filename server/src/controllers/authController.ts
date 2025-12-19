@@ -56,8 +56,9 @@ export const login = async(req:Request, res:Response):Promise<void>=>{
             });
             return;
         }
+        const statusCode = error.message.includes("not found") ? 404 : 401;
         //authentication error
-        res.status(401).json({
+        res.status(statusCode).json({
             status:"fail",
             message:error.message||"authentication failed",
         });
