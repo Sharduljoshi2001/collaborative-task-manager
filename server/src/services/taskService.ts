@@ -3,8 +3,8 @@ import { CreateTaskInput, UpdateTaskInput } from "../validators/taskValidator";
 export const createNewTask=async(data:CreateTaskInput,userId:string)=>{
     return await taskRepository.createTask(data,userId);
 }
-export const getAllTasks = async ()=>{
-    return await taskRepository.getAllTasks();
+export const getAllTasks = async (filter:any, userId:string)=>{
+    return await taskRepository.getAllTasks(filter, userId);
 }
 export const updateTask = async (
   taskId: string,

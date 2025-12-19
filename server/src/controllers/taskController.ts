@@ -49,7 +49,13 @@ export const createTask = async (req: Request, res: Response) => {
 //getting tasks controller
 export const getTasks = async (req: Request, res: Response) => {
   try {
-    const tasks = await taskService.getAllTasks();
+    const user = req.user as JwtPayload;
+    const filter= {
+      type:req.query.type as string,
+      status:req.query.status as string,
+      priority: req.query.priority as string
+    }
+    const tasks = await taskService.getAllTasks(filter,user.userId);
     res.status(200).json({
       status: "success",
       message: "tasks fetched successfully",

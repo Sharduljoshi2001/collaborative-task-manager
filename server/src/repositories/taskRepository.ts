@@ -27,17 +27,37 @@ export const createTask = async (data: CreateTaskInput, creatorId: string) => {
 };
 
 //getting all the tasks
-export const getAllTasks = async ()=>{
+export const getAllTasks = async (filter:any, userId:string)=>{
+  //making prismas where clause dynamic for advance filtering
+  let whereClause:any ={};
+  //dashborad filters
+  if(filter.type==="assigned"){
+    whereClause.assignedToId = userId;
+  } else if(filter.type==="created"){
+    whereClause.creatorId = userId;
+  } else if(filter.type==="overdue"){
+    whereClause.dueDate={
+      lt:new Date()
+    };
+    whereClause.status={
+      not:"COMPLETED"
+    };
+  }
+  //status and proprity filters
+  if(filter.status){
+    whereClause.status = filter.status;
+  }
+  if(filter.priority){
+    whereClause.priority = filter.priority
+  }
     return prisma.task.findMany({
-        include:{
-            creator:{
-                select:{ id:true,name:true, email:true }
-            },
-            assignedTo:{ 
-                select:{id:true, name:true, email:true}
-            }
-        },
-        orderBy:{createdAt:'desc'}
+      where:whereClause,
+      include:{
+        creator:{select:{id:true,name:true,email:true}},
+        assignedTo:{select:{id:true,name:true,email:true}}
+      },
+      //sorting by due date
+      orderBy:{dueDate:"asc"}
     })
 }
 
