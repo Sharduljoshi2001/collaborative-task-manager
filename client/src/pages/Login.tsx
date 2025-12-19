@@ -1,10 +1,10 @@
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { Link, useNavigate } from 'react-router-dom';
-import { LogIn, Mail, Lock, AlertCircle } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Link, useNavigate } from "react-router-dom";
+import { LogIn, Mail, Lock, AlertCircle } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 
 // creating validation schema using zod
 const loginSchema = z.object({
@@ -36,10 +36,21 @@ const Login = () => {
       // calling login from auth context
       await login(data);
       // redirecting to dashboard on success
-      navigate('/dashboard');
+      navigate("/dashboard");
     } catch (err: any) {
       // displaying error message from backend
-      setError(err.response?.data?.message || 'Failed to login');
+      const errorMessage = err.response?.data?.message || "Failed to login";
+      const statusCode = err.response?.status;
+
+      // 🟢 Agar user nahi mila (404) toh register page par redirect karo
+      if (statusCode === 404 || errorMessage.includes("not found")) {
+        // Hum toast notification bhi dikha sakte hain yahan redirect se pehle
+        alert("User not found! Redirecting to registration...");
+        navigate("/register");
+        return;
+      }
+
+      setError(errorMessage);
     }
   };
 
@@ -53,8 +64,11 @@ const Login = () => {
           Sign in to your account
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          Or{' '}
-          <Link to="/register" className="font-medium text-indigo-600 hover:text-indigo-500">
+          Or{" "}
+          <Link
+            to="/register"
+            className="font-medium text-indigo-600 hover:text-indigo-500"
+          >
             create a new account
           </Link>
         </p>
@@ -74,7 +88,10 @@ const Login = () => {
 
           <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Email address
               </label>
               <div className="mt-1 relative rounded-md shadow-sm">
@@ -84,18 +101,23 @@ const Login = () => {
                 <input
                   id="email"
                   type="email"
-                  {...register('email')}
+                  {...register("email")}
                   className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md py-2 border"
                   placeholder="you@example.com"
                 />
               </div>
               {errors.email && (
-                <p className="mt-2 text-sm text-red-600">{errors.email.message}</p>
+                <p className="mt-2 text-sm text-red-600">
+                  {errors.email.message}
+                </p>
               )}
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Password
               </label>
               <div className="mt-1 relative rounded-md shadow-sm">
@@ -105,13 +127,15 @@ const Login = () => {
                 <input
                   id="password"
                   type="password"
-                  {...register('password')}
+                  {...register("password")}
                   className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md py-2 border"
                   placeholder="••••••••"
                 />
               </div>
               {errors.password && (
-                <p className="mt-2 text-sm text-red-600">{errors.password.message}</p>
+                <p className="mt-2 text-sm text-red-600">
+                  {errors.password.message}
+                </p>
               )}
             </div>
 
@@ -120,7 +144,7 @@ const Login = () => {
               disabled={isSubmitting}
               className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
             >
-              {isSubmitting ? 'Signing in...' : 'Sign in'}
+              {isSubmitting ? "Signing in..." : "Sign in"}
             </button>
           </form>
         </div>
