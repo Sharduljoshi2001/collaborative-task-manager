@@ -9,18 +9,45 @@ import userRoute from "./routes/userRoute";
 import { prisma } from "./config/db";
 import jwt, { JwtPayload } from "jsonwebtoken";
 dotenv.config();
+// const app = express();
+// const PORT = process.env.PORT || 3000;
+// //middleware
+// app.use(express.json());
+// app.use(cors());
+// //creating raw http server so we can wrap express for real time socket
+// const httpServer = createServer(app);
+// //initializing socket ioc
+// const io = new Server(httpServer, {
+//   cors: {
+//     origin: "*",
+//     methods: ["GET", "POST", "PUT", "DELETE"],
+//   },
+// });
 const app = express();
 const PORT = process.env.PORT || 3000;
-//middleware
+
+// 1. Updated Express CORS
+app.use(cors({
+  origin: [
+    "http://localhost:5173", 
+    "https://collaborative-task-manager-livid.vercel.app" // 👈 Aapka naya Vercel Link
+  ],
+  credentials: true
+}));
+
 app.use(express.json());
-app.use(cors());
-//creating raw http server so we can wrap express for real time socket
+
 const httpServer = createServer(app);
-//initializing socket ioc
+
+// 2. Updated Socket.io CORS
 const io = new Server(httpServer, {
   cors: {
-    origin: "*",
+    origin: [
+      "http://localhost:5173", 
+      "https://collaborative-task-manager-livid.vercel.app"
+    ],
     methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true
   },
 });
 //socket middleware
