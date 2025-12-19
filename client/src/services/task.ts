@@ -1,11 +1,24 @@
 import api from './api';
 import type { ApiResponse, Task, CreateTaskData, UpdateTaskData } from '../types';
 
+// Defining filter types
+export interface TaskFilters {
+  type?: 'assigned' | 'created' | 'overdue';
+  status?: string;
+  priority?: string;
+}
+
 export const taskService = {
-  // fetching all tasks from the backend
-  getAllTasks: async () => {
-    // we expect an array of tasks in response
-    const response = await api.get<ApiResponse<Task[]>>('/tasks');
+  // fetching all tasks with optional filters
+  getAllTasks: async (filters?: TaskFilters) => {
+    // converting filters object to query string params
+    const params = new URLSearchParams();
+    
+    if (filters?.type) params.append('type', filters.type);
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.priority) params.append('priority', filters.priority);
+
+    const response = await api.get<ApiResponse<Task[]>>(`/tasks?${params.toString()}`);
     return response.data;
   },
 

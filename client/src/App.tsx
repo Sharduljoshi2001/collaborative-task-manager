@@ -1,31 +1,45 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { SocketProvider } from './context/SocketContext';
 import ProtectedRoute from './components/ProtectedRoute';
-
+import { Toaster } from 'react-hot-toast'; //importing toaster
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
-
 function App() {
   return (
-    // providing user data to the whole app
+    //providing user data to the whole app
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* public routes (accessible to everyone) */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+      {/*socket provider needs auth context so it comes inside*/}
+      <SocketProvider>
+        <BrowserRouter>
+          {/*placing toaster at the top level*/}
+          <Toaster 
+            position="top-right" 
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: '#363636',
+                color: '#fff',
+              },
+            }}
+          />
+          <Routes>
+            {/*public routes*/}
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
 
-          {/* protected routes (accessible only to logged in users) */}
-          <Route element={<ProtectedRoute />}>
-             <Route path="/dashboard" element={<Dashboard />} />
-          </Route>
+            {/*protected routes*/}
+            <Route element={<ProtectedRoute />}>
+               <Route path="/dashboard" element={<Dashboard />} />
+            </Route>
 
-          {/* redirecting to dashboard if path is invalid or root */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </BrowserRouter>
+            {/*redirects*/}
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </SocketProvider>
     </AuthProvider>
   );
 }

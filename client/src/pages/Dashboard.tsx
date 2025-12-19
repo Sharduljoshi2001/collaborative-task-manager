@@ -1,50 +1,114 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react'; 
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
+import { useSocket } from '../context/SocketContext';
 import { taskService } from '../services/task';
-import type { Task } from '../types';
-import { LogOut, LayoutDashboard, Plus, Calendar, AlertCircle } from 'lucide-react';
+import { LogOut, LayoutDashboard, Plus, Calendar, AlertCircle, Pencil, Trash2, Filter, Clock, User, UserCheck } from 'lucide-react';
+import toast from 'react-hot-toast'; //importing toast function
 import CreateTaskModal from '../components/CreateTaskModal';
+import EditTaskModal from '../components/EditTaskModal';
+import type { Task } from '../types';
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
+  const { socket, isConnected } = useSocket();
+  const queryClient = useQueryClient();
   
-  //state management for tasks
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
-  //state for handling modal visibility
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  //state for modals
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
-  //fetching tasks when component mounts
+  //filter state
+  const [filterType, setFilterType] = useState<'all' | 'assigned' | 'created' | 'overdue'>('all');
+
+  //fetching tasks
+  const { 
+    data: tasksResponse, 
+    isLoading, 
+    isError, 
+    error 
+  } = useQuery({
+    queryKey: ['tasks', filterType],
+    queryFn: () => taskService.getAllTasks(
+      filterType === 'all' ? {} : { type: filterType }
+    ),
+  });
+
+  //delete task mutation
+  const deleteTaskMutation = useMutation({
+    mutationFn: taskService.deleteTask,
+    onSuccess: () => {
+      toast.success("Task deleted successfully"); //toast on delete
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || "Failed to delete task");
+    }
+  });
+
+  //socket listeners with notification logic
   useEffect(() => {
-    const fetchTasks = async () => {
-      try {
-        //calling the service
-        const response = await taskService.getAllTasks();
-        
-        //updating state with valid data
-        if (response.data) {
-          setTasks(response.data);
-        }
-      } catch (err) {
-        console.error("Failed to fetch tasks", err);
-        setError("Failed to load your tasks. Please try again.");
-      } finally {
-        //stopping the loading spinner
-        setIsLoading(false);
+    if (!socket) return;
+
+    //handler for task creation
+    const handleTaskCreated = (newTask: Task) => {
+      console.log('🔥 New task received:', newTask);
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+
+      //notify if assigned to me (and i didnt create it myself)
+      if (newTask.assignedToId === user?.id && newTask.creatorId !== user?.id) {
+        toast.success(`You have been assigned a new task: ${newTask.title}`, {
+            icon: '🔔',
+            duration: 5000
+        });
       }
     };
 
-    fetchTasks();
-  }, []);
+    //handler for task updates
+    const handleTaskUpdated = (updatedTask: Task) => {
+        console.log(' Task update received:', updatedTask);
+        queryClient.invalidateQueries({ queryKey: ['tasks'] });
 
-  //function to add new task to list when created
-  const handleTaskCreated = (newTask: Task) => {
-    setTasks((prevTasks) => [newTask, ...prevTasks]);
+        //notify if status changed on my task
+        if (updatedTask.assignedToId === user?.id || updatedTask.creatorId === user?.id) {
+            //optional: only notify on major changes like status
+            //for now we just silent refresh or show small toast
+            //toast.success(`Task updated: ${updatedTask.title}`);
+        }
+    };
+
+    //handler for task deletion
+    const handleTaskDeleted = (data: any) => {
+      console.log('task deleted', data);
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    };
+
+    socket.on('task created', handleTaskCreated);
+    socket.on('task updated', handleTaskUpdated);
+    socket.on('task deleted', handleTaskDeleted);
+
+    return () => {
+      socket.off('task created', handleTaskCreated);
+      socket.off('task updated', handleTaskUpdated);
+      socket.off('task deleted', handleTaskDeleted);
+    };
+  }, [socket, queryClient, user]);
+
+  const tasks = tasksResponse?.data || [];
+
+  const handleEditClick = (task: Task) => {
+    setSelectedTask(task);
+    setIsEditModalOpen(true);
   };
 
-  //helper function to get color based on priority
+  const handleDeleteClick = (taskId: string) => {
+    if (window.confirm("Are you sure you want to delete this task?")) {
+      deleteTaskMutation.mutate(taskId);
+    }
+  };
+
+  //helper functions for colors
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'URGENT': return 'bg-red-100 text-red-800 border-red-200';
@@ -55,7 +119,6 @@ const Dashboard = () => {
     }
   };
 
-  //helper function to get color based on status
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'COMPLETED': return 'bg-green-500';
@@ -67,7 +130,7 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/*Navbar*/}
+      {/*navbar*/}
       <nav className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
@@ -82,12 +145,11 @@ const Dashboard = () => {
               <div className="hidden md:flex flex-col items-end">
                 <span className="text-sm font-medium text-gray-900">{user?.name}</span>
                 <span className="text-xs text-gray-500">{user?.email}</span>
+                <span className={`text-[10px] ${isConnected ? 'text-green-500' : 'text-red-500'}`}>
+                  {isConnected ? '● Live' : '○ Offline'}
+                </span>
               </div>
-              <button
-                onClick={logout}
-                className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
-                title="Logout"
-              >
+              <button onClick={logout} className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors">
                 <LogOut className="h-5 w-5" />
               </button>
             </div>
@@ -98,17 +160,15 @@ const Dashboard = () => {
       {/*main content*/}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
-        {/*header section*/}
-        <div className="md:flex md:items-center md:justify-between mb-8">
+        {/*header*/}
+        <div className="md:flex md:items-center md:justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">My Tasks</h1>
-            <p className="mt-1 text-sm text-gray-500">
-              Manage your tasks and track progress
-            </p>
+            <p className="mt-1 text-sm text-gray-500">Manage your tasks and track progress</p>
           </div>
           <div className="mt-4 md:mt-0">
             <button
-              onClick={() => setIsModalOpen(true)}
+              onClick={() => setIsCreateModalOpen(true)}
               className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all"
             >
               <Plus className="-ml-1 mr-2 h-5 w-5" />
@@ -117,54 +177,121 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {/*filter tabs*/}
+        <div className="mb-8 border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+            <button
+              onClick={() => setFilterType('all')}
+              className={`${
+                filterType === 'all'
+                  ? 'border-indigo-500 text-indigo-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2`}
+            >
+              <LayoutDashboard className="h-4 w-4" />
+              All Tasks
+            </button>
+
+            <button
+              onClick={() => setFilterType('assigned')}
+              className={`${
+                filterType === 'assigned'
+                  ? 'border-indigo-500 text-indigo-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2`}
+            >
+              <UserCheck className="h-4 w-4" />
+              Assigned to Me
+            </button>
+
+            <button
+              onClick={() => setFilterType('created')}
+              className={`${
+                filterType === 'created'
+                  ? 'border-indigo-500 text-indigo-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2`}
+            >
+              <User className="h-4 w-4" />
+              Created by Me
+            </button>
+
+            <button
+              onClick={() => setFilterType('overdue')}
+              className={`${
+                filterType === 'overdue'
+                  ? 'border-red-500 text-red-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2`}
+            >
+              <Clock className="h-4 w-4" />
+              Overdue
+            </button>
+          </nav>
+        </div>
+
         {/*content area*/}
         {isLoading ? (
-          //loading the skeleton
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
               <div key={i} className="h-48 bg-gray-200 rounded-xl animate-pulse"></div>
             ))}
           </div>
-        ) : error ? (
-          //below is the error state
+        ) : isError ? (
           <div className="rounded-md bg-red-50 p-4 border border-red-200">
             <div className="flex">
               <AlertCircle className="h-5 w-5 text-red-400" />
               <div className="ml-3">
                 <h3 className="text-sm font-medium text-red-800">Error loading tasks</h3>
-                <div className="mt-2 text-sm text-red-700">{error}</div>
+                {/*@ts-ignore*/}
+                <div className="mt-2 text-sm text-red-700">{error?.message || 'Something went wrong'}</div>
               </div>
             </div>
           </div>
         ) : tasks.length === 0 ? (
-          //below is empty state
           <div className="text-center py-20 bg-white rounded-xl border-2 border-dashed border-gray-200">
-            <LayoutDashboard className="mx-auto h-12 w-12 text-gray-300" />
+            <Filter className="mx-auto h-12 w-12 text-gray-300" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">No tasks found</h3>
-            <p className="mt-1 text-sm text-gray-500">Get started by creating a new task.</p>
+            <p className="mt-1 text-sm text-gray-500">
+               {filterType === 'overdue' ? 'Great job! No overdue tasks.' : 'Try changing filters or create a new task.'}
+            </p>
           </div>
         ) : (
-          //task grid
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {tasks.map((task) => (
               <div key={task.id} className="bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow p-6 relative group">
                 
-                {/*priority badge*/}
+                {/*header with actions*/}
                 <div className="flex justify-between items-start mb-4">
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getPriorityColor(task.priority)}`}>
                     {task.priority}
                   </span>
                   
-                  {/*status dot*/}
                   <div className="flex items-center gap-2">
-                     <span className={`h-2.5 w-2.5 rounded-full ${getStatusColor(task.status)}`} />
-                     <span className="text-xs text-gray-500 font-medium capitalize">
-                       {task.status.replace('_', ' ').toLowerCase()}
-                     </span>
+                    <button 
+                        onClick={() => handleEditClick(task)}
+                        className="p-1 text-gray-400 hover:text-indigo-600 transition-colors"
+                        title="Edit Task"
+                    >
+                        <Pencil className="h-4 w-4" />
+                    </button>
+                    <button 
+                        onClick={() => handleDeleteClick(task.id)}
+                        className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                        title="Delete Task"
+                    >
+                        <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
 
-                {/*task title & desc*/}
+                <div className="flex items-center gap-2 mb-2">
+                    <span className={`h-2.5 w-2.5 rounded-full ${getStatusColor(task.status)}`} />
+                    <span className="text-xs text-gray-500 font-medium capitalize">
+                        {task.status.replace('_', ' ').toLowerCase()}
+                    </span>
+                </div>
+
                 <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-indigo-600 transition-colors">
                   {task.title}
                 </h3>
@@ -172,25 +299,42 @@ const Dashboard = () => {
                   {task.description || "No description provided."}
                 </p>
 
-                {/*footer: date & the assignee*/}
                 <div className="flex items-center justify-between pt-4 border-t border-gray-50 mt-auto">
                   <div className="flex items-center text-sm text-gray-500">
                     <Calendar className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
                     {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No date'}
                   </div>
+
+                  {task.assignedTo && (
+                    <div className="flex items-center" title={`Assigned to ${task.assignedTo.name}`}>
+                      <div className="h-6 w-6 rounded-full bg-indigo-100 flex items-center justify-center text-xs font-medium text-indigo-600 border border-indigo-200">
+                        {task.assignedTo.name.charAt(0).toUpperCase()}
+                      </div>
+                      <span className="ml-2 text-xs text-gray-500 max-w-[100px] truncate">
+                        {task.assignedTo.name}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
           </div>
         )}
 
-        {/*rendering the create task modal*/}
+        {/*modals*/}
         <CreateTaskModal 
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          onTaskCreated={handleTaskCreated}
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
         />
-
+        
+        <EditTaskModal
+          isOpen={isEditModalOpen}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setSelectedTask(null);
+          }}
+          task={selectedTask}
+        />
       </div>
     </div>
   );
