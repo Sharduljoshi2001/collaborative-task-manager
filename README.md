@@ -17,12 +17,12 @@
 ## 🔐 Test Credentials (Existing Database Users)
 You can use the following accounts already stored in the Render PostgreSQL database to test the application:
 
-### 1. Admin/Lead User
+### 1. User 1
 - **Name:** Shardul Joshi
 - **Email:** `shardul@example.com`
 - **Password:** `securepassword123`
 
-### 2. Team Member User
+### 2. User 2
 - **Name:** Suchita Joshi
 - **Email:** `suchita@example.com`
 - **Password:** `shardul@2001`
