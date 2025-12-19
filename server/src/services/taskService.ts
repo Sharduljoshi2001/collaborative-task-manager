@@ -17,7 +17,7 @@ export const updateTask = async (
     throw new Error("task not found");
   }
   // checking ownership of the task
-  if (task.creatorId !== userId) {
+  if (task.creatorId !== userId && task.assignedToId!==userId) {
     throw new Error("unauthorized: You cannot update this task");
   }
   // updating the task by sending it to task repo layer
