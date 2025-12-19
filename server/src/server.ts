@@ -27,13 +27,12 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // 1. Updated Express CORS
-app.use(cors({
-  origin: [
-    "http://localhost:5173", 
-    "https://collaborative-task-manager-livid.vercel.app" // 👈 Aapka naya Vercel Link
-  ],
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: [true],
+    credentials: true,
+  })
+);
 
 app.use(express.json());
 
@@ -42,12 +41,9 @@ const httpServer = createServer(app);
 // 2. Updated Socket.io CORS
 const io = new Server(httpServer, {
   cors: {
-    origin: [
-      "http://localhost:5173", 
-      "https://collaborative-task-manager-livid.vercel.app"
-    ],
+    origin: [true],
     methods: ["GET", "POST", "PUT", "DELETE"],
-    credentials: true
+    credentials: true,
   },
 });
 //socket middleware
@@ -86,7 +82,7 @@ app.set("io", io);
 //routes mounting section
 app.use("/api/auth", authRoute);
 app.use("/api/tasks", taskRoute);
-app.use("/api/users",userRoute);
+app.use("/api/users", userRoute);
 //health check for DB connection
 app.get("/health", async (req: Request, res: Response) => {
   try {
