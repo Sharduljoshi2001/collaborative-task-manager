@@ -3,10 +3,11 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import { taskService } from '../services/task';
-import { LogOut, LayoutDashboard, Plus, Calendar, AlertCircle, Pencil, Trash2, Filter, Clock, User, UserCheck } from 'lucide-react';
-import toast from 'react-hot-toast'; //importing toast function
+import { LogOut, LayoutDashboard, Plus, Calendar, AlertCircle, Pencil, Trash2, Filter, Clock, User, UserCheck, Settings } from 'lucide-react';
+import toast from 'react-hot-toast';
 import CreateTaskModal from '../components/CreateTaskModal';
 import EditTaskModal from '../components/EditTaskModal';
+import EditProfileModal from '../components/EditProfileModal';
 import type { Task } from '../types';
 
 const Dashboard = () => {
@@ -17,29 +18,37 @@ const Dashboard = () => {
   //state for modals
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
-  //filter state
+  //filter state for tabs
   const [filterType, setFilterType] = useState<'all' | 'assigned' | 'created' | 'overdue'>('all');
 
-  //fetching tasks
+  //filter state for dropdowns
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [priorityFilter, setPriorityFilter] = useState<string>('');
+
+  //fetching tasks based on filter type and dropdowns
   const { 
     data: tasksResponse, 
     isLoading, 
     isError, 
     error 
   } = useQuery({
-    queryKey: ['tasks', filterType],
-    queryFn: () => taskService.getAllTasks(
-      filterType === 'all' ? {} : { type: filterType }
-    ),
+    //adding all filters to query key to trigger refetch on change
+    queryKey: ['tasks', filterType, statusFilter, priorityFilter],
+    queryFn: () => taskService.getAllTasks({
+      type: filterType === 'all' ? undefined : filterType as any,
+      status: statusFilter || undefined,
+      priority: priorityFilter || undefined
+    }),
   });
 
   //delete task mutation
   const deleteTaskMutation = useMutation({
     mutationFn: taskService.deleteTask,
     onSuccess: () => {
-      toast.success("Task deleted successfully"); //toast on delete
+      toast.success("Task deleted successfully");
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
     onError: (err: any) => {
@@ -47,7 +56,7 @@ const Dashboard = () => {
     }
   });
 
-  //socket listeners with notification logic
+  //socket listeners for real-time updates and notifications
   useEffect(() => {
     if (!socket) return;
 
@@ -67,21 +76,14 @@ const Dashboard = () => {
 
     //handler for task updates
     const handleTaskUpdated = (updatedTask: Task) => {
-        console.log(' Task update received:', updatedTask);
+        console.log('🔥 Task update received:', updatedTask);
         queryClient.invalidateQueries({ queryKey: ['tasks'] });
-
-        //notify if status changed on my task
-        if (updatedTask.assignedToId === user?.id || updatedTask.creatorId === user?.id) {
-            //optional: only notify on major changes like status
-            //for now we just silent refresh or show small toast
-            //toast.success(`Task updated: ${updatedTask.title}`);
-        }
     };
 
     //handler for task deletion
     const handleTaskDeleted = (data: any) => {
-      console.log('task deleted', data);
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        console.log('🗑️ Task deleted:', data);
+        queryClient.invalidateQueries({ queryKey: ['tasks'] });
     };
 
     socket.on('task created', handleTaskCreated);
@@ -97,6 +99,7 @@ const Dashboard = () => {
 
   const tasks = tasksResponse?.data || [];
 
+  //handlers for opening modals
   const handleEditClick = (task: Task) => {
     setSelectedTask(task);
     setIsEditModalOpen(true);
@@ -142,8 +145,18 @@ const Dashboard = () => {
             </div>
             
             <div className="flex items-center gap-4">
-              <div className="hidden md:flex flex-col items-end">
-                <span className="text-sm font-medium text-gray-900">{user?.name}</span>
+              <div className="hidden md:flex flex-col items-end mr-2">
+                {/*clickable user name for profile edit*/}
+                <div 
+                    className="flex items-center gap-2 cursor-pointer group"
+                    onClick={() => setIsProfileModalOpen(true)}
+                    title="Edit Profile"
+                >
+                    <span className="text-sm font-medium text-gray-900 group-hover:text-indigo-600 transition-colors">
+                        {user?.name}
+                    </span>
+                    <Settings className="h-3 w-3 text-gray-400 group-hover:text-indigo-600" />
+                </div>
                 <span className="text-xs text-gray-500">{user?.email}</span>
                 <span className={`text-[10px] ${isConnected ? 'text-green-500' : 'text-red-500'}`}>
                   {isConnected ? '● Live' : '○ Offline'}
@@ -178,7 +191,7 @@ const Dashboard = () => {
         </div>
 
         {/*filter tabs*/}
-        <div className="mb-8 border-b border-gray-200">
+        <div className="mb-6 border-b border-gray-200 overflow-x-auto">
           <nav className="-mb-px flex space-x-8" aria-label="Tabs">
             <button
               onClick={() => setFilterType('all')}
@@ -228,6 +241,43 @@ const Dashboard = () => {
               Overdue
             </button>
           </nav>
+        </div>
+
+        {/*dropdown filters for priority and status*/}
+        <div className="flex flex-wrap gap-4 mb-6">
+            <select
+                value={priorityFilter}
+                onChange={(e) => setPriorityFilter(e.target.value)}
+                className="block w-40 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+            >
+                <option value="">All Priorities</option>
+                <option value="LOW">Low</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="HIGH">High</option>
+                <option value="URGENT">Urgent</option>
+            </select>
+
+            <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="block w-40 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+            >
+                <option value="">All Statuses</option>
+                <option value="TO_DO">To Do</option>
+                <option value="IN_PROGRESS">In Progress</option>
+                <option value="REVIEW">Review</option>
+                <option value="COMPLETED">Completed</option>
+            </select>
+            
+            {/*clear filters button*/}
+            {(statusFilter || priorityFilter) && (
+                <button 
+                onClick={() => { setStatusFilter(''); setPriorityFilter(''); }}
+                className="text-sm text-indigo-600 hover:text-indigo-800 font-medium self-center"
+                >
+                Clear Filters
+                </button>
+            )}
         </div>
 
         {/*content area*/}
@@ -334,6 +384,11 @@ const Dashboard = () => {
             setSelectedTask(null);
           }}
           task={selectedTask}
+        />
+
+        <EditProfileModal
+          isOpen={isProfileModalOpen}
+          onClose={() => setIsProfileModalOpen(false)}
         />
       </div>
     </div>
