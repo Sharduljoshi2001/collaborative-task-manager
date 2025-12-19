@@ -27,27 +27,27 @@ export const createTask = async (data: CreateTaskInput, creatorId: string) => {
   });
 };
 
-// getting all the tasks
+//getting all the tasks
 export const getAllTasks = async (filter: any, userId: string) => {
-  // initializing dynamic where clause
+  //initializing dynamic where clause
   let whereClause: any = {};
 
-  // filtering logic based on task type (assigned vs created)
+  //filtering based on task type (assigned vs created)
   if (filter.type === "assigned") {
-    // fetching tasks assigned to the current user
+    //fetching tasks assigned to the current user
     whereClause.assignedToId = userId;
   } else if (filter.type === "created") {
-    // fetching tasks created by the current user
+    //fetching tasks crated by the current user
     whereClause.creatorId = userId;
   } else {
-    // default view: fetching tasks where user is either creator or assignee
+    //default view: fetching tasks where user is either creator or assignee
     whereClause.OR = [
       { creatorId: userId },
       { assignedToId: userId }
     ];
   }
 
-  // handling overdue filter logic
+  //handling overdue filter
   if (filter.type === "overdue") {
     whereClause.dueDate = {
       lt: new Date(),
@@ -57,36 +57,36 @@ export const getAllTasks = async (filter: any, userId: string) => {
     };
   }
 
-  // adding status filter if present
+  //adding status filter if present
   if (filter.status) {
     whereClause.status = filter.status;
   }
 
-  // adding priority filter if present
+  //adding priority filter if present
   if (filter.priority) {
     whereClause.priority = filter.priority;
   }
 
-  // executing query with relations and sorting
+  //executing query with relations and sorting
   return prisma.task.findMany({
     where: whereClause,
     include: {
       creator: { select: { id: true, name: true, email: true } },
       assignedTo: { select: { id: true, name: true, email: true } },
     },
-    // sorting by due date
+    //sorting tasksby due date
     orderBy: { dueDate: "asc" },
   });
 };
 
-// finding task by id
+//finding task by id
 export const findTaskById = async (id: string) => {
   return await prisma.task.findUnique({
     where: { id }
   });
 };
 
-// updating the task 
+//updating the task 
 export const updateTask = async (id: string, data: UpdateTaskInput) => {
   return await prisma.task.update({
     where: { id },
@@ -94,7 +94,7 @@ export const updateTask = async (id: string, data: UpdateTaskInput) => {
   });
 };
 
-// deleting the task
+//deleting the tas
 export const deleteTask = async (id: string) => {
   return await prisma.task.delete({
     where: { id }

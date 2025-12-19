@@ -1,14 +1,12 @@
 // data model(should match prisma schema)
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 export type TaskStatus = 'TO_DO' | 'IN_PROGRESS' | 'REVIEW' | 'COMPLETED';
-
 export interface User {
   id: string;
   name: string;
   email: string;
   createdAt?: string;
 }
-
 export interface Task {
   id: string;
   title: string;
@@ -23,7 +21,14 @@ export interface Task {
   creator?: User;
   assignedTo?: User;
 }
-
+export interface CreateTaskData{
+  title: string;
+  description?: string;
+  status?: TaskStatus;
+  priority?: TaskPriority;
+  dueDate?: string;
+  assignedToId?: string;
+}
 //api response structure
 export interface ApiResponse<T = any> {
   status: 'success' | 'fail' | 'error'; // ✅ Aapka wala status

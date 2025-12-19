@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { taskService } from '../services/task.ts';
+import { taskService } from '../services/task';
 import type { Task } from '../types';
 import { LogOut, LayoutDashboard, Plus, Calendar, AlertCircle } from 'lucide-react';
+import CreateTaskModal from '../components/CreateTaskModal';
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
@@ -11,6 +12,9 @@ const Dashboard = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  //state for handling modal visibility
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   //fetching tasks when component mounts
   useEffect(() => {
@@ -35,6 +39,11 @@ const Dashboard = () => {
     fetchTasks();
   }, []);
 
+  //function to add new task to list when created
+  const handleTaskCreated = (newTask: Task) => {
+    setTasks((prevTasks) => [newTask, ...prevTasks]);
+  };
+
   //helper function to get color based on priority
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -52,13 +61,13 @@ const Dashboard = () => {
       case 'COMPLETED': return 'bg-green-500';
       case 'IN_PROGRESS': return 'bg-blue-500';
       case 'REVIEW': return 'bg-purple-500';
-      default: return 'bg-gray-400'; // TO_DO
+      default: return 'bg-gray-400';
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Navbar */}
+      {/*Navbar*/}
       <nav className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
@@ -86,10 +95,10 @@ const Dashboard = () => {
         </div>
       </nav>
 
-      {/* main cntent */}
+      {/*main content*/}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
-        {/* header section */}
+        {/*header section*/}
         <div className="md:flex md:items-center md:justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">My Tasks</h1>
@@ -99,7 +108,7 @@ const Dashboard = () => {
           </div>
           <div className="mt-4 md:mt-0">
             <button
-              onClick={() => alert("Create Task Modal Coming Soon!")}
+              onClick={() => setIsModalOpen(true)}
               className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all"
             >
               <Plus className="-ml-1 mr-2 h-5 w-5" />
@@ -108,7 +117,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* content aarea */}
+        {/*content area*/}
         {isLoading ? (
           //loading the skeleton
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -117,7 +126,7 @@ const Dashboard = () => {
             ))}
           </div>
         ) : error ? (
-          // below is the error state
+          //below is the error state
           <div className="rounded-md bg-red-50 p-4 border border-red-200">
             <div className="flex">
               <AlertCircle className="h-5 w-5 text-red-400" />
@@ -128,25 +137,25 @@ const Dashboard = () => {
             </div>
           </div>
         ) : tasks.length === 0 ? (
-          // below it empty state
+          //below is empty state
           <div className="text-center py-20 bg-white rounded-xl border-2 border-dashed border-gray-200">
             <LayoutDashboard className="mx-auto h-12 w-12 text-gray-300" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">No tasks found</h3>
             <p className="mt-1 text-sm text-gray-500">Get started by creating a new task.</p>
           </div>
         ) : (
-          // task grid
+          //task grid
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {tasks.map((task) => (
               <div key={task.id} className="bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow p-6 relative group">
                 
-                {/* priority badge */}
+                {/*priority badge*/}
                 <div className="flex justify-between items-start mb-4">
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getPriorityColor(task.priority)}`}>
                     {task.priority}
                   </span>
                   
-                  {/* status dot */}
+                  {/*status dot*/}
                   <div className="flex items-center gap-2">
                      <span className={`h-2.5 w-2.5 rounded-full ${getStatusColor(task.status)}`} />
                      <span className="text-xs text-gray-500 font-medium capitalize">
@@ -155,7 +164,7 @@ const Dashboard = () => {
                   </div>
                 </div>
 
-                {/* task title & desc */}
+                {/*task title & desc*/}
                 <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-indigo-600 transition-colors">
                   {task.title}
                 </h3>
@@ -163,7 +172,7 @@ const Dashboard = () => {
                   {task.description || "No description provided."}
                 </p>
 
-                {/* footer: date & the assignee */}
+                {/*footer: date & the assignee*/}
                 <div className="flex items-center justify-between pt-4 border-t border-gray-50 mt-auto">
                   <div className="flex items-center text-sm text-gray-500">
                     <Calendar className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
@@ -174,6 +183,14 @@ const Dashboard = () => {
             ))}
           </div>
         )}
+
+        {/*rendering the create task modal*/}
+        <CreateTaskModal 
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onTaskCreated={handleTaskCreated}
+        />
+
       </div>
     </div>
   );
